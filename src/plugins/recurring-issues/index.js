@@ -15,10 +15,42 @@ const moment = require("moment-timezone");
 async function getReleaseIssueBody(releaseDate) {
     return `
 
-The scheduled release on ${releaseDate.format("dddd, MMMM Do, YYYY")} is assigned to:
+The next scheduled release will occur on ${releaseDate.format("dddd, MMMM Do, YYYY")}.
 
-* (needs volunteers)
-* (needs volunteers)
+## Release Day Checklist
+
+- [ ] Remove the 'tsc agenda' label on this issue
+- [ ] Review open pull requests and merge any that are [ready](https://eslint.org/docs/maintainer-guide/pullrequests#when-to-merge-a-pull-request)
+- [ ] Start the release on [Jenkins](https://jenkins.eslint.org)
+- [ ] Update the release blog post with a "Highlights" section
+- [ ] Make a release announcement on Twitter
+- [ ] Make a release announcement in the Discord '#announcements' channel
+- [ ] Add a comment to this issue saying the release is out
+- [ ] Add the 'patch release pending' label to this issue
+
+## Two Days After Release Day Checklist
+
+Typically Monday for regular releases; two days after patch releases.
+
+- [ ] Check the issues list for any regression issues
+
+## No Regressions Checklist
+
+- [ ] Remove the 'patch release pending' label from this issue
+- [ ] Close this issue
+
+## Patch Release Checklist
+
+- [ ] Resolve the regression by merging any necessary fixes
+- [ ] Start the release on [Jenkins](https://jenkins.eslint.org)
+- [ ] Update the release blog post with a "Highlights" section
+- [ ] Make a release announcement on Twitter
+- [ ] Make a release announcement in the Discord '#announcements' channel
+- [ ] Add a comment to this issue saying the release is out
+- [ ] Wait two days and repeat the Two Days After a Release checklist
+- [ ] Close this issue
+
+## Followup
 
 Please use this issue to document how the release went, any problems during the release, and anything the team might want to know about the release process. This issue should be closed after all patch releases have been completed (or there was no patch release needed).
 
@@ -41,14 +73,14 @@ async function getTeamMembers({ github, organizationName, teamName }) {
      * close to being a problem right now, so it hasn't been worth figuring out a good
      * way to paginate yet, but that would be a good enhancement in the future.
      */
-    const teams = await github.orgs.getTeams({ org: organizationName, per_page: 100 }).then(res => res.data);
+    const teams = await github.teams.list({ org: organizationName, per_page: 100 }).then(res => res.data);
     const desiredTeam = teams.find(team => team.slug === teamName);
 
     if (!desiredTeam) {
         throw new Error(`No team with name ${teamName} found`);
     }
 
-    const teamMembers = await github.orgs.getTeamMembers({ id: desiredTeam.id, per_page: 100 }).then(res => res.data);
+    const teamMembers = await github.teams.listMembers({ team_id: desiredTeam.id, per_page: 100 }).then(res => res.data);
 
     return Promise.all(teamMembers.map(async member => ({
         login: member.login,
@@ -89,7 +121,7 @@ UTC ${moment.utc(meetingDate).format(timeFormatString)}:
 
 # Location
 
-https://gitter.im/eslint/tsc-meetings
+https://eslint.org/chat/tsc-meetings
 
 # Agenda
 
@@ -119,7 +151,7 @@ Anyone is welcome to attend the meeting as observers. We ask that you refrain fr
  * @returns {Promise<boolean>} A Promise that fulfills with `true` if the issue was closed multiple times
  */
 async function issueWasClosedMultipleTimes(github, { owner, repo, number }) {
-    const issueEvents = await github.issues.getEvents({
+    const issueEvents = await github.issues.listEvents({
         owner,
         repo,
         number,
